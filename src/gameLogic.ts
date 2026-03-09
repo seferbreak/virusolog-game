@@ -58,8 +58,8 @@ export function initGame() {
     let mutantTemplate: THREE.Group | null = null; 
     let modelsLoaded = false;
     
-    const GUN_BASE_X = 0.25;
-    const GUN_BASE_Y = -0.25;
+    const GUN_BASE_X = 0.15;
+    const GUN_BASE_Y = -0.20;
     let isRecoiling = false; 
 
     // ДОБАВЛЕНО: сохраняем стартовую позицию игрока для рестарта
@@ -126,7 +126,7 @@ export function initGame() {
     gunSprite = new THREE.Sprite(gunMaterial);
     
     gunSprite.position.set(GUN_BASE_X, GUN_BASE_Y, -0.5); 
-    gunSprite.scale.set(0.44, 0.44, 1); 
+    gunSprite.scale.set(1.02, 0.78, 1); 
     gunSprite.renderOrder = 999;
     camera.add(gunSprite);
 
