@@ -116,7 +116,7 @@ export function initGame() {
     camera.add(flashLightCenter);
     camera.add(flashLightCenter.target);
 
-    const imageUrl = 'https://raw.githubusercontent.com/seferbreak/-/main/ChatGPT%20Image%209%20%D0%BC%D0%B0%D1%80.%202026%20%D0%B3.%2C%2016_21_15.png';
+    const imageUrl = 'https://raw.githubusercontent.com/seferbreak/-/main/ChatGPT%20Image%209%20%D0%BC%D0%B0%D1%80.%202026%20%D0%B3.%2C%2016_45_14.png';
     
     const gunTexture = new THREE.TextureLoader().load(imageUrl, undefined, undefined, () => {
         console.error("ОШИБКА: Не удалось загрузить картинку оружия.");
@@ -1236,7 +1236,7 @@ export function initGame() {
             if (item.userData.isKeycard || item.userData.isAmmo) { item.rotation.y += delta; item.position.y += Math.sin(time * 3) * 0.005; }
         }
 
-        const mutantRadius = 0.5; 
+        const mutantRadius = 2.0; 
         
         mutants.forEach(m => {
             if (m.userData.dead) return;
@@ -1317,7 +1317,7 @@ export function initGame() {
                         m.position.y = m.userData.baseY + Math.sin(jumpProgress * Math.PI) * 2.5;
                     } else {
                         m.userData.isJumping = false; m.position.y = m.userData.baseY;
-                        if (dist2D < 4.5) { playerHealth -= 25; updateHUD(); playSound('hurt'); flashDamage(); if (playerHealth <= 0) gameOver(); }
+                        if (dist2D < 5.5) { playerHealth -= 25; updateHUD(); playSound('hurt'); flashDamage(); if (playerHealth <= 0) gameOver(); }
                         m.userData.isRebounding = true; m.userData.reboundStartTime = time;
                     }
                 } else if (m.userData.isRebounding) {
@@ -1328,7 +1328,7 @@ export function initGame() {
                         if (!checkWallCollision(backX, m.position.z, mutantRadius)) m.position.x = backX;
                         if (!checkWallCollision(m.position.x, backZ, mutantRadius)) m.position.z = backZ;
                     } else { m.userData.isRebounding = false; m.userData.lastAttack = time; }
-                } else if (dist2D > 3.0) { 
+                } else if (dist2D > 4.0) { 
                     let moveX = m.position.x + Math.sin(targetRot) * delta * 15.0; 
                     let moveZ = m.position.z + Math.cos(targetRot) * delta * 15.0;
                     if (!checkWallCollision(moveX, m.position.z, mutantRadius)) m.position.x = moveX;
@@ -1342,7 +1342,7 @@ export function initGame() {
                         let attackDirX = yawObject.position.x - m.position.x;
                         let attackDirZ = yawObject.position.z - m.position.z;
                         let attackLen = Math.hypot(attackDirX, attackDirZ);
-                        let safeDist = 1.5;
+                        let safeDist = 3.5;
                         if (attackLen > 0) {
                             attackDirX /= attackLen;
                             attackDirZ /= attackLen;
