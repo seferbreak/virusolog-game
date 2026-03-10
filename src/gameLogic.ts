@@ -126,7 +126,7 @@ export function initGame() {
     gunSprite = new THREE.Sprite(gunMaterial);
     
     gunSprite.position.set(GUN_BASE_X, GUN_BASE_Y, -0.5); 
-    gunSprite.scale.set(1.02, 0.78, 1); 
+    gunSprite.scale.set(0.867, 0.663, 1); 
     gunSprite.renderOrder = 999;
     camera.add(gunSprite);
 
