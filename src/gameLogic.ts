@@ -9,9 +9,9 @@ export function initGame() {
     let gameWon = false;
     let isPaused = true; 
     
-    const tileSize = 7.0; 
-    const wallHeight = 6.0; 
-    const playerRadius = 0.8;
+    const tileSize = 16.0; 
+    const wallHeight = 12.0; 
+    const playerRadius = 1.0;
 
     // Определение сенсорного устройства
     let isMobileMode = true; // Всегда мобильный режим
@@ -27,9 +27,9 @@ export function initGame() {
         "W.W.W.W.W.W.W.W",
         "W.W.L.W...W.W.W",
         "W.WWWWWWW.W.W.W",
-        "W.M...L.....W.W",
+        "W.M...L..H..W.W",
         "WWWWWWWWWWWWW.W",
-        "W...M.........E",
+        "W...M...H.....E",
         "WWWWWWWWWWWWWWW"
     ];
 
@@ -76,9 +76,9 @@ export function initGame() {
 
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x050608); 
-    scene.fog = new THREE.FogExp2(0x050608, 0.04);
+    scene.fog = new THREE.FogExp2(0x050608, 0.012);
 
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
     
     pitchObject = new THREE.Object3D();
     pitchObject.add(camera);
@@ -96,6 +96,18 @@ export function initGame() {
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.9;
     
+    const uiScaler = document.getElementById('ui-scaler');
+    if (uiScaler) {
+        const scale = window.innerHeight / targetHeight;
+        const internalWidth = Math.ceil(targetHeight * aspect);
+        uiScaler.style.width = `${internalWidth}px`;
+        uiScaler.style.height = `${targetHeight}px`;
+        const scaledWidth = internalWidth * scale;
+        const offsetX = (window.innerWidth - scaledWidth) / 2;
+        uiScaler.style.transform = `translate(${offsetX}px, 0px) scale(${scale})`;
+        uiScaler.style.transformOrigin = 'top left';
+    }
+    
     const container = document.getElementById('game-container');
     if (container) {
         container.innerHTML = ''; // Clear previous
@@ -104,13 +116,13 @@ export function initGame() {
 
     scene.add(new THREE.AmbientLight(0x444a55, 0.6));
 
-    flashLight = new THREE.SpotLight(0xfff5e6, 100, 70, Math.PI / 2.8, 0.6, 2);
+    flashLight = new THREE.SpotLight(0xfff5e6, 100, 150, Math.PI / 2.8, 0.6, 2);
     flashLight.position.set(0, 0, 0);
     flashLight.target.position.set(0, 0, -1);
     camera.add(flashLight);
     camera.add(flashLight.target);
 
-    flashLightCenter = new THREE.SpotLight(0xffffff, 350, 90, Math.PI / 9, 0.3, 2);
+    flashLightCenter = new THREE.SpotLight(0xffffff, 350, 200, Math.PI / 9, 0.3, 2);
     flashLightCenter.position.set(0, 0, 0);
     flashLightCenter.target.position.set(0, 0, -1);
     camera.add(flashLightCenter);
@@ -126,11 +138,11 @@ export function initGame() {
     gunSprite = new THREE.Sprite(gunMaterial);
     
     gunSprite.position.set(GUN_BASE_X, GUN_BASE_Y, -0.5); 
-    gunSprite.scale.set(0.867, 0.663, 1); 
+    gunSprite.scale.set(0.737, 0.564, 1); 
     gunSprite.renderOrder = 999;
     camera.add(gunSprite);
 
-    muzzleFlash = new THREE.PointLight(0xffaa00, 0, 10, 2);
+    muzzleFlash = new THREE.PointLight(0xffaa00, 0, 30, 2);
     muzzleFlash.position.set(0.2, 0.1, -0.6);
     camera.add(muzzleFlash);
 
@@ -645,7 +657,7 @@ export function initGame() {
                                 screen.rotation.y = emptyDir.rot;
                                 scene.add(screen);
                                 
-                                let screenLight = new THREE.PointLight(0x00ffaa, 20, 5, 2);
+                                let screenLight = new THREE.PointLight(0x00ffaa, 20, 15, 2);
                                 screenLight.position.set(objPx + Math.sin(emptyDir.rot)*0.5, 1.5 + 0.4, objPz + Math.cos(emptyDir.rot)*0.5);
                                 scene.add(screenLight);
                             } else {
@@ -669,7 +681,7 @@ export function initGame() {
                     let frameB = new THREE.Mesh(frameGeo, currentWallMat); frameB.position.set(px, (wallHeight * 0.2)/2, pz); frameB.userData.isWall = true; scene.add(frameB); walls.push(frameB);
                     let frameT = new THREE.Mesh(frameGeo, currentWallMat); frameT.position.set(px, wallHeight - (wallHeight * 0.2)/2, pz); frameT.userData.isWall = true; scene.add(frameT); walls.push(frameT);
                 } else if (type === 'L') {
-                    let light = new THREE.PointLight(0xaaccff, 25, 12, 2); 
+                    let light = new THREE.PointLight(0xaaccff, 25, 30, 2); 
                     light.position.set(px, wallHeight - 0.5, pz);
                     light.userData.isFlickering = true; light.userData.baseIntensity = 25;
                     scene.add(light); items.push(light);
@@ -709,14 +721,22 @@ export function initGame() {
                     mutant.position.set(px, 0, pz);
                     scene.add(mutant); mutants.push(mutant);
                 } else if (type === 'K') {
-                    let keycard = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, 0.05), new THREE.MeshStandardMaterial({color: 0x0044aa}));
+                    let keycard = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.15), new THREE.MeshStandardMaterial({color: 0x0044aa}));
                     keycard.position.set(px, 1.2, pz); keycard.userData.isKeycard = true;
-                    let light = new THREE.PointLight(0x0066cc, 3, 2); keycard.add(light);
+                    let light = new THREE.PointLight(0x0066cc, 10, 5); keycard.add(light);
                     scene.add(keycard); items.push(keycard);
                 } else if (type === 'A') {
-                    let ammoBox = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.3, 0.4), new THREE.MeshStandardMaterial({color: 0x2a3a2a}));
-                    ammoBox.position.set(px, 0.15, pz); ammoBox.userData.isAmmo = true;
+                    let ammoBox = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.2, 1.5), new THREE.MeshStandardMaterial({color: 0x2a3a2a}));
+                    ammoBox.position.set(px, 0.6, pz); ammoBox.userData.isAmmo = true;
                     scene.add(ammoBox); items.push(ammoBox);
+                } else if (type === 'H') {
+                    let medkit = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.2, 1.5), new THREE.MeshStandardMaterial({color: 0xffffff}));
+                    // Add a red cross
+                    let crossH = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.2, 1.55), new THREE.MeshBasicMaterial({color: 0xff0000}));
+                    let crossV = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.0, 1.55), new THREE.MeshBasicMaterial({color: 0xff0000}));
+                    medkit.add(crossH); medkit.add(crossV);
+                    medkit.position.set(px, 0.6, pz); medkit.userData.isMedkit = true;
+                    scene.add(medkit); items.push(medkit);
                 } else if (type === 'E') {
                     let exitDoor = new THREE.Mesh(new THREE.BoxGeometry(tileSize, wallHeight, 0.2), doorMat);
                     exitDoor.rotation.y = -Math.PI / 2;
@@ -727,7 +747,7 @@ export function initGame() {
                     wallBehind.position.set(px + tileSize, wallHeight/2, pz); 
                     wallBehind.userData.isWall = true; scene.add(wallBehind); walls.push(wallBehind);
                     
-                    let exitGlow = new THREE.PointLight(0xff0000, 100, 15, 1.5);
+                    let exitGlow = new THREE.PointLight(0xff0000, 100, 40, 1.5);
                     exitGlow.position.set(px + 1, wallHeight/2, pz);
                     scene.add(exitGlow);
                 }
@@ -830,6 +850,18 @@ export function initGame() {
         camera.aspect = aspect;
         camera.updateProjectionMatrix();
         renderer.setSize(targetHeight * aspect, targetHeight, false);
+
+        const uiScaler = document.getElementById('ui-scaler');
+        if (uiScaler) {
+            const scale = window.innerHeight / targetHeight;
+            const internalWidth = Math.ceil(targetHeight * aspect);
+            uiScaler.style.width = `${internalWidth}px`;
+            uiScaler.style.height = `${targetHeight}px`;
+            const scaledWidth = internalWidth * scale;
+            const offsetX = (window.innerWidth - scaledWidth) / 2;
+            uiScaler.style.transform = `translate(${offsetX}px, 0px) scale(${scale})`;
+            uiScaler.style.transformOrigin = 'top left';
+        }
     }
 
     function shoot() {
@@ -973,6 +1005,18 @@ export function initGame() {
             gain.gain.setValueAtTime(1, t); gain.gain.exponentialRampToValueAtTime(0.01, t+0.4);
             osc.connect(gain); gain.connect(audioCtx.destination); osc.start(t); osc.stop(t+0.4);
         }
+        else if (type === 'pickup') {
+            const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+            osc.type = 'sine'; osc.frequency.setValueAtTime(400, t); osc.frequency.exponentialRampToValueAtTime(800, t+0.1);
+            gain.gain.setValueAtTime(0.5, t); gain.gain.exponentialRampToValueAtTime(0.01, t+0.1);
+            osc.connect(gain); gain.connect(audioCtx.destination); osc.start(t); osc.stop(t+0.1);
+        }
+        else if (type === 'empty') {
+            const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+            osc.type = 'square'; osc.frequency.setValueAtTime(50, t);
+            gain.gain.setValueAtTime(0.2, t); gain.gain.exponentialRampToValueAtTime(0.01, t+0.1);
+            osc.connect(gain); gain.connect(audioCtx.destination); osc.start(t); osc.stop(t+0.1);
+        }
     }
 
     function playNoise(time: number, duration: number, volume: number) {
@@ -1079,62 +1123,95 @@ export function initGame() {
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
-        const w = canvas.width = 200, h = canvas.height = 200;
+        const w = canvas.width = 120, h = canvas.height = 120;
+        const center = w / 2;
         
         ctx.clearRect(0, 0, w, h);
         
-        ctx.strokeStyle = "rgba(0, 255, 170, 0.15)"; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.arc(100, 100, 95, 0, Math.PI*2); ctx.stroke();
-        ctx.beginPath(); ctx.arc(100, 100, 45, 0, Math.PI*2); ctx.stroke();
+        // Сетка и круги дальности
+        ctx.strokeStyle = "rgba(0, 255, 170, 0.1)"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(center, center, center - 2, 0, Math.PI*2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(center, center, center / 2, 0, Math.PI*2); ctx.stroke();
         
         ctx.save();
-        ctx.translate(100, 100);
+        ctx.translate(center, center);
         ctx.rotate(yawObject.rotation.y); 
         
-        const scale = 3; 
+        // Масштаб: сколько пикселей на один игровой метр
+        const scale = 2.0; 
         
-        ctx.fillStyle = "rgba(0, 255, 170, 0.4)";
+        // Отрисовка стен
+        ctx.fillStyle = "rgba(0, 255, 170, 0.6)";
         for(let z=0; z<MAP.length; z++) {
             for(let x=0; x<MAP[z].length; x++) {
-                if(MAP[z][x] === 'W' || MAP[z][x] === 'O' || MAP[z][x] === 'B' || MAP[z][x] === 'C' || MAP[z][x] === 'D') {
+                const char = MAP[z][x];
+                if(char === 'W' || char === 'O' || char === 'B' || char === 'C' || char === 'D') {
                     const rx = (x * tileSize - yawObject.position.x) * scale;
                     const rz = (z * tileSize - yawObject.position.z) * scale;
-                    if(Math.hypot(rx, rz) < 95) ctx.fillRect(rx - scale/2, rz - scale/2, scale + 1, scale + 1);
-                } else if (MAP[z][x] === 'E') {
+                    
+                    // Рисуем только если в пределах видимости мини-карты
+                    if(Math.hypot(rx, rz) < center + tileSize * scale) {
+                        ctx.fillRect(rx - (tileSize * scale)/2, rz - (tileSize * scale)/2, tileSize * scale, tileSize * scale);
+                    }
+                } else if (char === 'E') {
                     const rx = (x * tileSize - yawObject.position.x) * scale;
                     const rz = (z * tileSize - yawObject.position.z) * scale;
-                    if(Math.hypot(rx, rz) < 95) {
+                    if(Math.hypot(rx, rz) < center) {
                         ctx.fillStyle = "#ff0000"; 
-                        ctx.fillRect(rx - scale, rz - scale, scale*2, scale*2);
-                        ctx.fillStyle = "rgba(0, 255, 170, 0.4)";
+                        ctx.fillRect(rx - (tileSize * scale)/2, rz - (tileSize * scale)/2, tileSize * scale, tileSize * scale);
+                        ctx.fillStyle = "rgba(0, 255, 170, 0.6)";
                     }
                 }
             }
         }
         
+        // Отрисовка врагов
         ctx.fillStyle = "#ff3333";
         mutants.forEach(m => {
             if(!m.userData.dead) {
                 const rx = (m.position.x - yawObject.position.x) * scale;
                 const rz = (m.position.z - yawObject.position.z) * scale;
-                if(Math.hypot(rx, rz) < 95) {
+                if(Math.hypot(rx, rz) < center) {
                     ctx.beginPath(); ctx.arc(rx, rz, 3, 0, Math.PI*2); ctx.fill();
+                    // Маленькая обводка для врагов
+                    ctx.strokeStyle = "white"; ctx.lineWidth = 1; ctx.stroke();
                 }
             }
         });
+
+        // Игрок (всегда в центре)
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.moveTo(0, -5);
+        ctx.lineTo(4, 5);
+        ctx.lineTo(-4, 5);
+        ctx.closePath();
+        ctx.fill();
         
         ctx.restore();
 
-        ctx.fillStyle = "rgba(255,255,255,0.7)";
-        ctx.font = "bold 14px sans-serif";
+        // Метки сторон света
+        ctx.fillStyle = "rgba(0, 255, 170, 0.8)";
+        ctx.font = "bold 10px sans-serif";
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText("N", 100, 15);
-        ctx.fillText("S", 100, 185);
-        ctx.fillText("W", 15, 100);
-        ctx.fillText("E", 185, 100);
+        
+        // Поворачиваем метки в зависимости от взгляда игрока, чтобы они всегда были по краям
+        const angle = -yawObject.rotation.y;
+        const labelDist = center - 8;
+        
+        const drawLabel = (text: string, offsetAngle: number) => {
+            const a = angle + offsetAngle;
+            const lx = center + Math.sin(a) * labelDist;
+            const ly = center - Math.cos(a) * labelDist;
+            ctx.fillText(text, lx, ly);
+        };
+
+        drawLabel("N", 0);
+        drawLabel("E", Math.PI/2);
+        drawLabel("S", Math.PI);
+        drawLabel("W", -Math.PI/2);
         
         ctx.fillStyle = "#ffffff";
-        ctx.beginPath(); ctx.moveTo(100, 90); ctx.lineTo(95, 105); ctx.lineTo(105, 105); ctx.fill();
     }
 
     const clock = new THREE.Clock();
@@ -1147,9 +1224,9 @@ export function initGame() {
         const delta = Math.min(clock.getDelta(), 0.1);
         const time = clock.getElapsedTime();
 
-        const currentSpeed = isSprinting ? 45.0 : 25.0; 
+        const currentSpeed = isSprinting ? 112.5 : 67.5; 
         const friction = 8.0;
-        const bobMult = isSprinting ? 14 : 8; 
+        const bobMult = isSprinting ? 21 : 12; 
 
         velocity.x -= velocity.x * friction * delta; 
         velocity.z -= velocity.z * friction * delta;
@@ -1228,12 +1305,28 @@ export function initGame() {
                 else (item as THREE.PointLight).intensity = item.userData.baseIntensity;
                 continue; 
             }
-            if (yawObject.position.distanceTo(item.position) < 3.0) { 
+            const dist2D = Math.hypot(yawObject.position.x - item.position.x, yawObject.position.z - item.position.z);
+            if (dist2D < 7.0) { 
                 if (item.userData.isKeycard) { hasKeycard = true; showMessage("ПОЛУЧЕН ДОСТУП. НАЙДИТЕ ВЫХОД.", "#00aaff"); playSound('pickup'); scene.remove(item); items.splice(i, 1); items.forEach(it => { if(it.userData.isExit) (it as any).material.color.setHex(0x00ff55); }); }
                 else if (item.userData.isAmmo) { playerAmmo += 10; updateHUD(); showMessage("+10 ПАТРОНОВ", "#55ff55"); playSound('pickup'); scene.remove(item); items.splice(i, 1); }
+                else if (item.userData.isMedkit) { 
+                    if (playerHealth < 300) {
+                        playerHealth = Math.min(300, playerHealth + 50); 
+                        updateHUD(); 
+                        showMessage("+50 ЗДОРОВЬЕ", "#55ff55"); 
+                        playSound('pickup'); 
+                        scene.remove(item); 
+                        items.splice(i, 1); 
+                    } else {
+                        if(!item.userData.msgCooldown || time - item.userData.msgCooldown > 2) {
+                            showMessage("ЗДОРОВЬЕ ПОЛНОЕ", "#ffffff");
+                            item.userData.msgCooldown = time;
+                        }
+                    }
+                }
                 else if (item.userData.isExit) { if (hasKeycard) win(); else { if(!item.userData.msgCooldown || time - item.userData.msgCooldown > 2) { showMessage("ДВЕРЬ ЗАБЛОКИРОВАНА. НУЖНА СИНЯЯ КЛЮЧ-КАРТА.", "#ff3333"); item.userData.msgCooldown = time; } } }
             }
-            if (item.userData.isKeycard || item.userData.isAmmo) { item.rotation.y += delta; item.position.y += Math.sin(time * 3) * 0.005; }
+            if (item.userData.isKeycard || item.userData.isAmmo || item.userData.isMedkit) { item.rotation.y += delta; item.position.y += Math.sin(time * 3) * 0.005; }
         }
 
         const mutantRadius = 2.0; 
@@ -1304,45 +1397,75 @@ export function initGame() {
             }
             else if (m.userData.state === 'chasing') {
                 let targetRot = Math.atan2(yawObject.position.x - m.position.x, yawObject.position.z - m.position.z);
-                m.rotation.y += (targetRot - m.rotation.y) * delta * 8; 
+                
+                // Более резкий поворот
+                let angleDiff = targetRot - m.rotation.y;
+                while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                m.rotation.y += angleDiff * delta * 12; 
+
                 let dist2D = Math.hypot(yawObject.position.x - m.position.x, yawObject.position.z - m.position.z);
 
                 if (m.userData.isJumping) {
-                    let jumpProgress = (time - m.userData.jumpStartTime) / 0.5; 
+                    let jumpProgress = (time - m.userData.jumpStartTime) / 0.4; // Быстрее прыжок
                     if (jumpProgress < 1.0) {
                         let newX = m.userData.jumpStartX + (m.userData.jumpTargetX - m.userData.jumpStartX) * jumpProgress;
                         let newZ = m.userData.jumpStartZ + (m.userData.jumpTargetZ - m.userData.jumpStartZ) * jumpProgress;
                         if (!checkWallCollision(newX, m.position.z, mutantRadius)) m.position.x = newX;
                         if (!checkWallCollision(m.position.x, newZ, mutantRadius)) m.position.z = newZ;
-                        m.position.y = m.userData.baseY + Math.sin(jumpProgress * Math.PI) * 2.5;
+                        m.position.y = m.userData.baseY + Math.sin(jumpProgress * Math.PI) * 3.0;
+                        
+                        // Наклон при прыжке
+                        if (m.userData.model) m.userData.model.rotation.x = -Math.sin(jumpProgress * Math.PI) * 0.5;
                     } else {
                         m.userData.isJumping = false; m.position.y = m.userData.baseY;
-                        if (dist2D < 5.5) { playerHealth -= 25; updateHUD(); playSound('hurt'); flashDamage(); if (playerHealth <= 0) gameOver(); }
+                        if (m.userData.model) m.userData.model.rotation.x = 0;
+                        if (dist2D < 6.0) { playerHealth -= 35; updateHUD(); playSound('hurt'); flashDamage(); if (playerHealth <= 0) gameOver(); }
                         m.userData.isRebounding = true; m.userData.reboundStartTime = time;
                     }
                 } else if (m.userData.isRebounding) {
-                    let reboundProgress = (time - m.userData.reboundStartTime) / 0.3; 
+                    let reboundProgress = (time - m.userData.reboundStartTime) / 0.25; 
                     if (reboundProgress < 1.0) {
-                        let backX = m.position.x - Math.sin(targetRot) * delta * 15.0;
-                        let backZ = m.position.z - Math.cos(targetRot) * delta * 15.0;
+                        let backX = m.position.x - Math.sin(targetRot) * delta * 20.0;
+                        let backZ = m.position.z - Math.cos(targetRot) * delta * 20.0;
                         if (!checkWallCollision(backX, m.position.z, mutantRadius)) m.position.x = backX;
                         if (!checkWallCollision(m.position.x, backZ, mutantRadius)) m.position.z = backZ;
                     } else { m.userData.isRebounding = false; m.userData.lastAttack = time; }
-                } else if (dist2D > 4.0) { 
-                    let moveX = m.position.x + Math.sin(targetRot) * delta * 15.0; 
-                    let moveZ = m.position.z + Math.cos(targetRot) * delta * 15.0;
+                } else if (dist2D > 4.5) { 
+                    // Хаотичное стрейфинг (боковое движение)
+                    if (m.userData.strafeDir === undefined || time > m.userData.nextStrafeTime) {
+                        m.userData.strafeDir = (Math.random() - 0.5) * 2;
+                        m.userData.nextStrafeTime = time + Math.random() * 1.5 + 0.5;
+                    }
+
+                    // Переменная скорость (рывками)
+                    let speedPulse = 1.0 + Math.sin(time * 10) * 0.3;
+                    let moveSpeed = 16.0 * speedPulse;
+                    
+                    let moveX = m.position.x + Math.sin(targetRot) * delta * moveSpeed; 
+                    let moveZ = m.position.z + Math.cos(targetRot) * delta * moveSpeed;
+                    
+                    // Добавляем стрейф
+                    moveX += Math.cos(targetRot) * m.userData.strafeDir * delta * 8.0;
+                    moveZ -= Math.sin(targetRot) * m.userData.strafeDir * delta * 8.0;
+
                     if (!checkWallCollision(moveX, m.position.z, mutantRadius)) m.position.x = moveX;
                     if (!checkWallCollision(m.position.x, moveZ, mutantRadius)) m.position.z = moveZ;
-                    if (m.userData.model) m.userData.model.rotation.z = Math.sin(time * 25) * 0.2;
+                    
+                    // Органичное покачивание и наклон в сторону движения
+                    if (m.userData.model) {
+                        m.userData.model.rotation.z = Math.sin(time * 20) * 0.15 + (m.userData.strafeDir * 0.1);
+                        m.userData.model.position.y = 2.4 + Math.abs(Math.sin(time * 20)) * 0.3; // Подпрыгивание при беге
+                    }
                 } else {
-                    if (time - (m.userData.lastAttack || 0) > 0.4) {
+                    if (time - (m.userData.lastAttack || 0) > 0.3) {
                         m.userData.isJumping = true; m.userData.jumpStartTime = time;
                         m.userData.jumpStartX = m.position.x; m.userData.jumpStartZ = m.position.z;
                         
                         let attackDirX = yawObject.position.x - m.position.x;
                         let attackDirZ = yawObject.position.z - m.position.z;
                         let attackLen = Math.hypot(attackDirX, attackDirZ);
-                        let safeDist = 3.5;
+                        let safeDist = 3.0;
                         if (attackLen > 0) {
                             attackDirX /= attackLen;
                             attackDirZ /= attackLen;
@@ -1351,6 +1474,7 @@ export function initGame() {
                         m.userData.jumpTargetZ = yawObject.position.z - attackDirZ * safeDist;
                         
                         m.userData.baseY = m.position.y;
+                        playSound('monster_aggro'); // Повторный рык при атаке
                     }
                 }
             }
