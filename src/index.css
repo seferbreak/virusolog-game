@@ -75,11 +75,11 @@ body, html {
     position: absolute;
     top: 10px;
     right: 10px;
-    width: 120px;
-    height: 120px;
-    background-color: rgba(0, 5, 10, 0.6);
+    width: 60px;
+    height: 60px;
+    background-color: rgba(0, 5, 10, 0.42); /* Сделано на 30% прозрачнее от 0.6 */
     border: 2px solid rgba(0, 255, 170, 0.2);
-    border-radius: 0px;
+    border-radius: 50%; /* Сделано обратно круглой */
     box-shadow: 0 0 15px rgba(0,0,0,0.5), inset 0 0 10px rgba(0, 255, 170, 0.05);
     z-index: 10;
     overflow: hidden;

@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 export function initGame() {
     // --- КОНФИГУРАЦИЯ ИГРЫ ---
@@ -25,11 +27,11 @@ export function initGame() {
         "W.W.W.WWW.W.M.W",
         "W.M.W.A.W.W.W.W",
         "W.W.W.W.W.W.W.W",
-        "W.W.L.W...W.W.W",
+        "W.W.L.W.N.W.W.W",
         "W.WWWWWWW.W.W.W",
         "W.M...L..H..W.W",
         "WWWWWWWWWWWWW.W",
-        "W...M...H.....E",
+        "W...M...H...N.E",
         "WWWWWWWWWWWWWWW"
     ];
 
@@ -56,6 +58,10 @@ export function initGame() {
     let noiseBuffer: AudioBuffer | null = null;
     
     let mutantTemplate: THREE.Group | null = null; 
+    let newEnemyTemplate: THREE.Group | null = null;
+    let newEnemies: THREE.Group[] = [];
+    let newEnemyAnimations: { [key: string]: THREE.AnimationClip } = {};
+    let newEnemyMixers: THREE.AnimationMixer[] = [];
     let modelsLoaded = false;
     
     const GUN_BASE_X = 0.15;
@@ -147,9 +153,92 @@ export function initGame() {
     camera.add(muzzleFlash);
 
     const gltfLoader = new GLTFLoader();
+    const fbxLoader = new FBXLoader();
     const modelUrl = 'https://raw.githubusercontent.com/seferbreak/-/main/Meshy_AI_Pink_Cyber_Skull_Spid_0306135258_texture.glb';
+    const newEnemyModelUrl = '/models/animated_enemy/main_model.fbx';
+    const newEnemyWalkUrl = '/models/animated_enemy/walking.fbx';
+    const newEnemyRunUrl = '/models/animated_enemy/running.fbx';
+    const newEnemyTextureUrl = '/models/new_enemy/Meshy_AI_аы_0314090349_texture_fbx/Meshy_AI_аы_0314090349_texture.png';
     
+    const newEnemyTexture = new THREE.TextureLoader().load(newEnemyTextureUrl);
+    newEnemyTexture.colorSpace = THREE.SRGBColorSpace;
+
     const btnStart = document.getElementById('btn-start');
+
+    fbxLoader.load(newEnemyModelUrl, (fbx) => {
+        newEnemyTemplate = fbx;
+        newEnemyTemplate.scale.set(0.0764, 0.0764, 0.0764); 
+        newEnemyTemplate.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(newEnemyTemplate);
+        const height = box.max.y - box.min.y;
+        newEnemyTemplate.position.y = -box.min.y - height * 0.2;
+        
+        newEnemyTemplate.traverse((child: any) => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+                child.material = new THREE.MeshStandardMaterial({
+                    map: newEnemyTexture,
+                    roughness: 0.8,
+                    metalness: 0.2,
+                    skinning: true
+                });
+            }
+        });
+
+        // Load walk animation
+        fbxLoader.load(newEnemyWalkUrl, (animFbx) => {
+            if (animFbx.animations && animFbx.animations.length > 0) {
+                let clip = animFbx.animations[0];
+                
+                // Отключаем движение (Root Motion) внутри самой анимации, оставляя только движения рук и ног
+                clip.tracks = clip.tracks.filter(track => {
+                    if (track.name.endsWith('.position')) {
+                        if (track.name.toLowerCase().includes('hips')) return false;
+                    }
+                    return true;
+                });
+
+                newEnemyAnimations['walk'] = clip;
+            }
+
+            // Load run animation
+            fbxLoader.load(newEnemyRunUrl, (runFbx) => {
+                if (runFbx.animations && runFbx.animations.length > 0) {
+                    let clip = runFbx.animations[0];
+                    
+                    clip.tracks = clip.tracks.filter(track => {
+                        if (track.name.endsWith('.position')) {
+                            if (track.name.toLowerCase().includes('hips')) return false;
+                        }
+                        return true;
+                    });
+
+                    newEnemyAnimations['run'] = clip;
+                }
+
+                newEnemies.forEach(n => {
+                    if (n.userData.tempMesh) n.remove(n.userData.tempMesh);
+                    let clone = SkeletonUtils.clone(newEnemyTemplate!) as THREE.Group;
+                    
+                    const mixer = new THREE.AnimationMixer(clone);
+                    n.userData.mixer = mixer;
+                    newEnemyMixers.push(mixer);
+                    
+                    if (newEnemyAnimations['walk']) {
+                        const action = mixer.clipAction(newEnemyAnimations['walk']);
+                        action.play();
+                        n.userData.currentAction = action;
+                    }
+
+                    n.add(clone);
+                    n.userData.model = clone;
+                });
+            });
+        });
+    }, undefined, (error) => {
+        console.error("Ошибка загрузки нового врага:", error);
+    });
 
     gltfLoader.load(modelUrl, (gltf) => {
         mutantTemplate = gltf.scene;
@@ -720,6 +809,10 @@ export function initGame() {
                     let mutant = createMutant();
                     mutant.position.set(px, 0, pz);
                     scene.add(mutant); mutants.push(mutant);
+                } else if (type === 'N') {
+                    let enemy = createNewEnemy();
+                    enemy.position.set(px, 0, pz);
+                    scene.add(enemy); newEnemies.push(enemy);
                 } else if (type === 'K') {
                     let keycard = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.15), new THREE.MeshStandardMaterial({color: 0x0044aa}));
                     keycard.position.set(px, 1.2, pz); keycard.userData.isKeycard = true;
@@ -777,6 +870,34 @@ export function initGame() {
         } else {
             const tempMesh = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.5, 0.8), new THREE.MeshBasicMaterial({color: 0xff0000, wireframe: true}));
             tempMesh.position.y = 2.5; group.add(tempMesh); group.userData.tempMesh = tempMesh;
+        }
+        return group;
+    }
+
+    function createNewEnemy() {
+        const group = new THREE.Group();
+        group.userData.isNewEnemy = true;
+        group.userData.hp = 10;
+        group.userData.state = 'patrol';
+
+        if (newEnemyTemplate) {
+            let clone = SkeletonUtils.clone(newEnemyTemplate) as THREE.Group;
+            
+            const mixer = new THREE.AnimationMixer(clone);
+            group.userData.mixer = mixer;
+            newEnemyMixers.push(mixer);
+            
+            if (newEnemyAnimations['walk']) {
+                const action = mixer.clipAction(newEnemyAnimations['walk']);
+                action.play();
+                group.userData.currentAction = action;
+            }
+
+            group.add(clone);
+            group.userData.model = clone;
+        } else {
+            const tempMesh = new THREE.Mesh(new THREE.BoxGeometry(1.0, 2.0, 1.0), new THREE.MeshBasicMaterial({color: 0x00ff00, wireframe: true}));
+            tempMesh.position.y = 1.0; group.add(tempMesh); group.userData.tempMesh = tempMesh;
         }
         return group;
     }
@@ -891,6 +1012,7 @@ export function initGame() {
             while (current) {
                 if (current.userData && current.userData.isWall) isWall = true;
                 if (current.userData && current.userData.isMutant) hitMutant = current;
+                if (current.userData && current.userData.isNewEnemy) hitMutant = current;
                 current = current.parent;
             }
 
@@ -934,7 +1056,14 @@ export function initGame() {
             playSound('monster_die');
             spawnSmoke(mutant.position);
             scene.remove(mutant);
-            mutants = mutants.filter(m => m !== mutant);
+            if (mutant.userData.isMutant) {
+                mutants = mutants.filter(m => m !== mutant);
+            } else if (mutant.userData.isNewEnemy) {
+                newEnemies = newEnemies.filter(m => m !== mutant);
+                if (mutant.userData.mixer) {
+                    newEnemyMixers = newEnemyMixers.filter(m => m !== mutant.userData.mixer);
+                }
+            }
         }
     }
 
@@ -1094,11 +1223,14 @@ export function initGame() {
         updateHUD();
         
         mutants.forEach(m => scene.remove(m));
+        newEnemies.forEach(n => scene.remove(n));
         items.forEach(i => scene.remove(i));
         walls.forEach(w => scene.remove(w));
         smokeParticles.forEach(p => scene.remove(p));
         
         mutants = [];
+        newEnemies = [];
+        newEnemyMixers = [];
         items = [];
         walls = [];
         smokeParticles = [];
@@ -1123,7 +1255,7 @@ export function initGame() {
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
-        const w = canvas.width = 120, h = canvas.height = 120;
+        const w = canvas.width = 60, h = canvas.height = 60;
         const center = w / 2;
         
         ctx.clearRect(0, 0, w, h);
@@ -1179,16 +1311,28 @@ export function initGame() {
             }
         });
 
-        // Игрок (всегда в центре)
+        ctx.fillStyle = "#ffaa00";
+        newEnemies.forEach(m => {
+            if(!m.userData.dead) {
+                const rx = (m.position.x - yawObject.position.x) * scale;
+                const rz = (m.position.z - yawObject.position.z) * scale;
+                if(Math.hypot(rx, rz) < center) {
+                    ctx.beginPath(); ctx.arc(rx, rz, 3, 0, Math.PI*2); ctx.fill();
+                    ctx.strokeStyle = "white"; ctx.lineWidth = 1; ctx.stroke();
+                }
+            }
+        });
+
+        ctx.restore();
+
+        // Игрок (всегда в центре, смотрит вверх)
         ctx.fillStyle = "#ffffff";
         ctx.beginPath();
-        ctx.moveTo(0, -5);
-        ctx.lineTo(4, 5);
-        ctx.lineTo(-4, 5);
+        ctx.moveTo(center, center - 5);
+        ctx.lineTo(center + 4, center + 5);
+        ctx.lineTo(center - 4, center + 5);
         ctx.closePath();
         ctx.fill();
-        
-        ctx.restore();
 
         // Метки сторон света
         ctx.fillStyle = "rgba(0, 255, 170, 0.8)";
@@ -1224,9 +1368,9 @@ export function initGame() {
         const delta = Math.min(clock.getDelta(), 0.1);
         const time = clock.getElapsedTime();
 
-        const currentSpeed = isSprinting ? 112.5 : 67.5; 
+        const currentSpeed = isSprinting ? 125.0 : 75.0; 
         const friction = 8.0;
-        const bobMult = isSprinting ? 21 : 12; 
+        const bobMult = isSprinting ? 21 : 14; 
 
         velocity.x -= velocity.x * friction * delta; 
         velocity.z -= velocity.z * friction * delta;
@@ -1479,6 +1623,138 @@ export function initGame() {
                 }
             }
         });
+
+        newEnemies.forEach(n => {
+            if (n.userData.dead) return;
+            
+            let dirToPlayer = new THREE.Vector3().subVectors(yawObject.position, n.position);
+            let dist = dirToPlayer.length();
+            dirToPlayer.normalize();
+            
+            let playerForward = new THREE.Vector3(0, 0, -1).applyQuaternion(yawObject.quaternion);
+            let dot = playerForward.dot(dirToPlayer.clone().negate());
+            let isIlluminated = (dist < 28 && dot > 0.85); 
+            let isTooClose = (dist < 8); 
+
+            if (n.userData.state === 'patrol') {
+                // Проверка на обнаружение игрока
+                if (isIlluminated || isTooClose) {
+                    raycaster.set(n.position, dirToPlayer);
+                    let intersects = raycaster.intersectObjects(walls);
+                    let sightClear = true; 
+                    if (intersects.length > 0 && intersects[0].distance < dist) sightClear = false;
+
+                    if (sightClear) {
+                        n.userData.state = 'chase';
+                        playSound('monster_aggro');
+                        
+                        // Переключаем анимацию на бег
+                        if (newEnemyAnimations['run'] && n.userData.mixer) {
+                            const runAction = n.userData.mixer.clipAction(newEnemyAnimations['run']);
+                            runAction.reset().play();
+                            if (n.userData.currentAction) {
+                                n.userData.currentAction.crossFadeTo(runAction, 0.5, true);
+                            }
+                            n.userData.currentAction = runAction;
+                        }
+                    }
+                }
+
+                if (n.userData.state === 'patrol') {
+                    if (n.userData.patrolAngle === undefined) {
+                        // Выбираем одно из 4 направлений (вдоль коридоров)
+                        n.userData.patrolAngle = Math.floor(Math.random() * 4) * (Math.PI / 2);
+                        n.userData.nextTurnTime = time + Math.random() * 4 + 2;
+                    }
+
+                    // Проверяем, свободен ли путь впереди
+                    let checkDist = 2.5;
+                    let forwardX = n.position.x + Math.sin(n.userData.patrolAngle) * checkDist;
+                    let forwardZ = n.position.z + Math.cos(n.userData.patrolAngle) * checkDist;
+                    let hitWallAhead = checkWallCollision(forwardX, n.position.z, mutantRadius) || checkWallCollision(n.position.x, forwardZ, mutantRadius);
+
+                    if (hitWallAhead || time > n.userData.nextTurnTime) {
+                        let possibleAngles = [0, Math.PI/2, Math.PI, Math.PI*1.5];
+                        possibleAngles.sort(() => Math.random() - 0.5); // Случайный порядок
+                        for (let a of possibleAngles) {
+                            let cx = n.position.x + Math.sin(a) * checkDist;
+                            let cz = n.position.z + Math.cos(a) * checkDist;
+                            if (!checkWallCollision(cx, n.position.z, mutantRadius) && !checkWallCollision(n.position.x, cz, mutantRadius)) {
+                                n.userData.patrolAngle = a;
+                                break;
+                            }
+                        }
+                        n.userData.nextTurnTime = time + Math.random() * 4 + 2;
+                    }
+
+                    let angleDiff = n.userData.patrolAngle - n.rotation.y;
+                    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                    n.rotation.y += angleDiff * delta * 3; // Плавный поворот
+
+                    let moveX = n.position.x + Math.sin(n.rotation.y) * delta * 3.5; 
+                    let moveZ = n.position.z + Math.cos(n.rotation.y) * delta * 3.5;
+
+                    if (!checkWallCollision(moveX, n.position.z, mutantRadius)) {
+                        n.position.x = moveX;
+                    }
+                    if (!checkWallCollision(n.position.x, moveZ, mutantRadius)) {
+                        n.position.z = moveZ;
+                    }
+                }
+            } 
+            
+            if (n.userData.state === 'chase') {
+                let targetRot = Math.atan2(yawObject.position.x - n.position.x, yawObject.position.z - n.position.z);
+                
+                let angleDiff = targetRot - n.rotation.y;
+                while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                n.rotation.y += angleDiff * delta * 10; 
+
+                let moveX = n.position.x + Math.sin(n.rotation.y) * delta * 8.0; // Бежит быстрее
+                let moveZ = n.position.z + Math.cos(n.rotation.y) * delta * 8.0;
+
+                if (!checkWallCollision(moveX, n.position.z, mutantRadius)) {
+                    n.position.x = moveX;
+                }
+                if (!checkWallCollision(n.position.x, moveZ, mutantRadius)) {
+                    n.position.z = moveZ;
+                }
+
+                // Нанесение урона игроку
+                if (dist < 2.5 && time - lastDamageTime > 1.0) {
+                    playerHP -= 20;
+                    lastDamageTime = time;
+                    playSound('player_hurt');
+                    updateHUD();
+                    
+                    const dmgOverlay = document.getElementById('damage-overlay');
+                    if (dmgOverlay) {
+                        dmgOverlay.style.opacity = '1';
+                        setTimeout(() => { dmgOverlay.style.opacity = '0'; }, 300);
+                    }
+
+                    if (playerHP <= 0) {
+                        isDead = true;
+                        if(audioCtx && audioCtx.state === 'running') audioCtx.suspend();
+                        const deathScreen = document.getElementById('death-screen');
+                        if (deathScreen) deathScreen.style.display = 'flex';
+                        document.exitPointerLock();
+                    }
+                }
+            }
+
+            if (n.userData.model) {
+                if (n.userData.baseY === undefined) {
+                    n.userData.baseY = n.userData.model.position.y;
+                }
+                // Removed procedural crawling animation since we now use Mixamo animation
+                n.userData.model.position.y = n.userData.baseY;
+            }
+        });
+
+        newEnemyMixers.forEach(mixer => mixer.update(delta));
 
         drawMinimap();
         renderer.render(scene, camera);
