@@ -1731,14 +1731,17 @@ export function initGame() {
                 while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
                 n.rotation.y += angleDiff * delta * 10; 
 
-                let moveX = n.position.x + Math.sin(n.rotation.y) * delta * 8.0; // Бежит быстрее
-                let moveZ = n.position.z + Math.cos(n.rotation.y) * delta * 8.0;
+                // Двигаемся к игроку только если дистанция больше 3.0 (чтобы не входить в камеру)
+                if (dist > 3.0) {
+                    let moveX = n.position.x + Math.sin(n.rotation.y) * delta * 8.0; // Бежит быстрее
+                    let moveZ = n.position.z + Math.cos(n.rotation.y) * delta * 8.0;
 
-                if (!checkWallCollision(moveX, n.position.z, mutantRadius)) {
-                    n.position.x = moveX;
-                }
-                if (!checkWallCollision(n.position.x, moveZ, mutantRadius)) {
-                    n.position.z = moveZ;
+                    if (!checkWallCollision(moveX, n.position.z, mutantRadius)) {
+                        n.position.x = moveX;
+                    }
+                    if (!checkWallCollision(n.position.x, moveZ, mutantRadius)) {
+                        n.position.z = moveZ;
+                    }
                 }
 
                 // Нанесение урона игроку
