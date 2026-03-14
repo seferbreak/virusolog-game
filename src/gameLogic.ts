@@ -62,7 +62,20 @@ export function initGame() {
     let newEnemies: THREE.Group[] = [];
     let newEnemyAnimations: { [key: string]: THREE.AnimationClip } = {};
     let newEnemyMixers: THREE.AnimationMixer[] = [];
+    let oldEnemyLoaded = false;
+    let newEnemyLoaded = false;
     let modelsLoaded = false;
+
+    function checkAllModelsLoaded() {
+        if (oldEnemyLoaded && newEnemyLoaded) {
+            modelsLoaded = true;
+            const btnStart = document.getElementById('btn-start');
+            if (btnStart) {
+                btnStart.innerText = "ИГРАТЬ";
+                btnStart.classList.remove('disabled');
+            }
+        }
+    }
     
     const GUN_BASE_X = 0.15;
     const GUN_BASE_Y = -0.20;
@@ -158,7 +171,7 @@ export function initGame() {
     const newEnemyModelUrl = '/models/animated_enemy/main_model.fbx';
     const newEnemyWalkUrl = '/models/animated_enemy/walking.fbx';
     const newEnemyRunUrl = '/models/animated_enemy/running.fbx';
-    const newEnemyTextureUrl = '/models/new_enemy/Meshy_AI_аы_0314090349_texture_fbx/Meshy_AI_аы_0314090349_texture.png';
+    const newEnemyTextureUrl = '/models/new_enemy/texture_fbx/texture.png';
     
     const newEnemyTexture = new THREE.TextureLoader().load(newEnemyTextureUrl);
     newEnemyTexture.colorSpace = THREE.SRGBColorSpace;
@@ -234,10 +247,22 @@ export function initGame() {
                     n.add(clone);
                     n.userData.model = clone;
                 });
+                newEnemyLoaded = true;
+                checkAllModelsLoaded();
+            }, undefined, (error) => {
+                console.error("Ошибка загрузки анимации бега:", error);
+                newEnemyLoaded = true;
+                checkAllModelsLoaded();
             });
+        }, undefined, (error) => {
+            console.error("Ошибка загрузки анимации ходьбы:", error);
+            newEnemyLoaded = true;
+            checkAllModelsLoaded();
         });
     }, undefined, (error) => {
         console.error("Ошибка загрузки нового врага:", error);
+        newEnemyLoaded = true;
+        checkAllModelsLoaded();
     });
 
     gltfLoader.load(modelUrl, (gltf) => {
@@ -266,11 +291,8 @@ export function initGame() {
             }
         });
 
-        modelsLoaded = true;
-        if (btnStart) {
-            btnStart.innerText = "ИГРАТЬ";
-            btnStart.classList.remove('disabled');
-        }
+        oldEnemyLoaded = true;
+        checkAllModelsLoaded();
 
         mutants.forEach(m => {
             if (m.userData.tempMesh) m.remove(m.userData.tempMesh);
@@ -289,11 +311,8 @@ export function initGame() {
         });
     }, undefined, (error) => {
         console.error("Ошибка загрузки модели:", error);
-        modelsLoaded = true; 
-        if (btnStart) {
-            btnStart.innerText = "ИГРАТЬ (БЕЗ МОДЕЛЕЙ)";
-            btnStart.classList.remove('disabled');
-        }
+        oldEnemyLoaded = true;
+        checkAllModelsLoaded();
         if (ctrlDesc) {
             ctrlDesc.innerText = "Ошибка загрузки 3D моделей. Играем с заглушками.";
         }
